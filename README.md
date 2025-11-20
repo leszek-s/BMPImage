@@ -1,11 +1,11 @@
-# BMP32Image
+# BMPImage
 
-BMP32Image is a cross platform pure swift library for reading and writing 32 bit BMP image files with alpha channel support.
+BMPImage is a cross platform pure swift library for reading and writing 24-bit and 32-bit BMP image files.
 
 ## Installation
 
-To integrate this library simply add BMP32Image.swift file to your project.
+To integrate this library simply add BMPImage.swift file to your project or use SPM.
 
 ## License
 
-BMP32Image is available under the MIT license.
+BMPImage is available under the MIT license.
