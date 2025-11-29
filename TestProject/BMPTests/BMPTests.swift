@@ -107,6 +107,26 @@ final class BMPTests: XCTestCase {
         checkBMPImage(image, test24FileName: "testSolidColor24.bmp", test32FileName: "testSolidColor32.bmp")
     }
     
+    func testReadWritePixel() throws {
+        print("Generating test bitmap")
+        guard let image = BMPImage(width: 200, height: 200, color: .init(r: 100, g: 50, b: 200, a: 255)) else {
+            XCTFail()
+            return
+        }
+        let c = image.readPixel(x: 5, y: 10)
+        XCTAssertEqual(c?.r, 100)
+        XCTAssertEqual(c?.g, 50)
+        XCTAssertEqual(c?.b, 200)
+        XCTAssertEqual(c?.a, 255)
+        image.writePixel(x: 5, y: 10, color: .init(r: 255, g: 0, b: 0, a: 255))
+        let d = image.readPixel(x: 5, y: 10)
+        XCTAssertEqual(d?.r, 255)
+        XCTAssertEqual(d?.g, 0)
+        XCTAssertEqual(d?.b, 0)
+        XCTAssertEqual(d?.a, 255)
+        checkBMPImage(image, test24FileName: "testReadWritePixel24.bmp", test32FileName: "testReadWritePixel32.bmp")
+    }
+    
     func testGradientBitmap() throws {
         print("Generating gradient bitmap")
         guard let image = BMPImage(width: 1000, height: 1000, startColor: .init(r: 255, g: 255, b: 0, a: 200), endColor: .init(r: 255, g: 0, b: 255, a: 200), startPoint: .init(x: 0, y: 0), endPoint: .init(x: 1000, y: 1000)) else {

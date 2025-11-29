@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// BMPImage v1.1.0
+// BMPImage v1.1.2
 // This single file cross platform pure swift library is an implementation
 // of reading and writing most common uncompressed 24-bit and 32-bit BMP
 // image files.
@@ -324,6 +324,28 @@ public class BMPImage {
                 }
             }
         }
+    }
+    
+    public func readPixel(x: Int, y: Int) -> RGBA? {
+        guard x >= 0, y >= 0, x < width, y < height else {
+            return nil
+        }
+        let rowOffset = y * width * 4
+        let offset = rowOffset + x * 4
+        let color = RGBA(r: rgba[offset], g: rgba[offset + 1], b: rgba[offset + 2], a: rgba[offset + 3])
+        return color
+    }
+    
+    public func writePixel(x: Int, y: Int, color: RGBA) {
+        guard x >= 0, y >= 0, x < width, y < height else {
+            return
+        }
+        let rowOffset = y * width * 4
+        let offset = rowOffset + x * 4
+        rgba[offset] = color.r
+        rgba[offset + 1] = color.g
+        rgba[offset + 2] = color.b
+        rgba[offset + 3] = color.a
     }
     
     /// Returns 32-bit BMP image file data (with alpha).
@@ -732,9 +754,11 @@ extension BMPImage {
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         var data = [UInt8](repeating: 0, count: cgImage.width * cgImage.height * 4)
         let bitmapInfo = CGBitmapInfo.byteOrder32Big.rawValue | CGImageAlphaInfo.premultipliedLast.rawValue
-        guard let context = CGContext(data: &data, width: cgImage.width, height: cgImage.height, bitsPerComponent: 8, bytesPerRow: 4 * cgImage.width, space: colorSpace, bitmapInfo: bitmapInfo) else {
-            return nil
+        let context: CGContext? = data.withUnsafeMutableBytes { ptr in
+            guard let base = ptr.baseAddress else { return nil }
+            return CGContext(data: base, width: cgImage.width, height: cgImage.height, bitsPerComponent: 8, bytesPerRow: 4 * cgImage.width, space: colorSpace, bitmapInfo: bitmapInfo)
         }
+        guard let context = context else { return nil }
         context.draw(cgImage, in: CGRect(x: 0, y: 0, width: cgImage.width, height: cgImage.height))
         Self.unpremultiplyRGBA(&data)
         self.init(width: cgImage.width, height: cgImage.height, rgba: data)
@@ -746,10 +770,13 @@ extension BMPImage {
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         var data = rgba
         Self.premultiplyRGBA(&data)
-        let bitmapInfo = CGBitmapInfo.byteOrder32Big.rawValue | CGImageAlphaInfo.premultipliedLast.rawValue
-        let context = CGContext(data: &data, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 4 * width, space: colorSpace, bitmapInfo: bitmapInfo)
-        let image = context?.makeImage()
-        return image
+        return data.withUnsafeMutableBytes { ptr in
+            guard let base = ptr.baseAddress else { return nil }
+            let bitmapInfo = CGBitmapInfo.byteOrder32Big.rawValue | CGImageAlphaInfo.premultipliedLast.rawValue
+            let context = CGContext(data: base, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 4 * width, space: colorSpace, bitmapInfo: bitmapInfo)
+            let image = context?.makeImage()
+            return image
+        }
     }
     
     private static func premultiplyRGBA(_ data: inout [UInt8]) {
