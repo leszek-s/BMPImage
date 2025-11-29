@@ -116,6 +116,35 @@ final class BMPTests: XCTestCase {
         checkBMPImage(image, test24FileName: "testSolidColor24.bmp", test32FileName: "testSolidColor32.bmp")
     }
     
+    func testBitmapWithText() throws {
+        print("Generating bitmap with text")
+        guard let image = BMPImage(text: "\n Hello! :)\n Have a nice day!\n 123!@#$%^&*()_+-={}[]<>,.;:`'\"\\/|?~ \n", rawFont: .default8x16, textColor: .white, backgroundColor: .black) else {
+            XCTFail()
+            return
+        }
+        checkBMPImage(image, test24FileName: "testWithText24.bmp", test32FileName: "testWithText32.bmp")
+    }
+    
+    func testBitmapWithCharacters() throws {
+        print("Generating bitmap with text")
+        var text = ""
+        for i in 0 ..< 256 {
+            if i == 10 {
+                text.append(" ")
+            } else {
+                text.append(String(UnicodeScalar(i)!))
+            }
+            if i < 255 && i % 16 == 15 {
+                text.append("\n")
+            }
+        }
+        guard let image = BMPImage(text: text, rawFont: .default8x16, textColor: .white, backgroundColor: .black) else {
+            XCTFail()
+            return
+        }
+        checkBMPImage(image, test24FileName: "testWithCharacters24.bmp", test32FileName: "testWithCharacters32.bmp")
+    }
+    
     func testLargeBitmap() throws {
         print("Generating large bitmap")
         guard let image = BMPImage(width: 4096, height: 4096, color: .init(r: 50, g: 100, b: 150, a: 200)) else {
@@ -223,5 +252,50 @@ final class BMPTests: XCTestCase {
             let image = BMPImage(width: 2000, height: 2000, startColor: .init(r: 255, g: 255, b: 0, a: 255), endColor: .init(r: 255, g: 0, b: 255, a: 255), startPoint: .init(x: 0, y: 0), endPoint: .init(x: 2000, y: 2000))
             XCTAssertNotNil(image)
         }
+    }
+    
+    func testDefaultFontGeneration() throws {
+        // used for generating default8x16 font from bitmap
+        guard let url = Bundle.main.url(forResource: "bmpfont", withExtension: "bmp"),
+              let data = try? Data(contentsOf: url),
+              let image = BMPImage(bmpData: data)
+        else {
+            return
+        }
+        let rawFontData = rawFontData8x16(bmpImage: image, glyphsCount: 6 * 16)
+        let bytes = [UInt8](rawFontData)
+        bytes.enumerated().forEach {
+            print(String(format: "0x%02X", $0.element), terminator: $0.offset % 16 == 15 ? ",\n" : ", ")
+        }
+    }
+    
+    func rawFontData8x16(bmpImage: BMPImage, glyphsCount: Int) -> Data {
+        let glyphWidth = 8
+        let glyphHeight = 16
+        var raw = Data(count: glyphsCount * glyphHeight)
+        
+        for glyphIndex in 0 ..< glyphsCount {
+            let glyphCol = glyphIndex % 16
+            let glyphRow = glyphIndex / 16
+            
+            for row in 0 ..< glyphHeight {
+                var byte: UInt8 = 0
+                
+                for col in 0 ..< glyphWidth {
+                    let pixelX = glyphCol * glyphWidth + col
+                    let pixelY = glyphRow * glyphHeight + row
+                    let offset = (pixelY * bmpImage.width + pixelX) * 4
+                    let r = bmpImage.rgba[offset + 0]
+                    let g = bmpImage.rgba[offset + 1]
+                    let b = bmpImage.rgba[offset + 2]
+                    
+                    let bit: UInt8 = (r > 127 || g > 127 || b > 127) ? 1 : 0
+                    byte |= bit << (7 - col)
+                }
+                
+                raw[glyphIndex * glyphHeight + row] = byte
+            }
+        }
+        return raw
     }
 }
